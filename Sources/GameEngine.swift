@@ -27,6 +27,10 @@ class GameEngine {
     var cells: [[Cell]]
     let maxDeathFrames = 18
 
+    // Stagnation detection: rolling window of board hashes
+    private var recentHashes: [Int] = []
+    private let stagnationWindow = 100
+
     // Charmtone palette by Christian Rocha (meowgorithm)
     static let palette: [NSColor] = [
         NSColor(hex: 0xFF6E63),  // bengal
@@ -153,13 +157,35 @@ class GameEngine {
 
         cells = next
 
-        // Inject life if population drops too low
+        // Stagnation detection: if any board state repeats within the last 100 steps, inject life
+        let hash = boardHash()
+        if recentHashes.contains(hash) {
+            injectPattern()
+        }
+        recentHashes.append(hash)
+        if recentHashes.count > stagnationWindow {
+            recentHashes.removeFirst()
+        }
+
+        // Also inject if population drops too low
         let total = width * height
         if aliveCount < total / 25 {
             for _ in 0..<5 { injectPattern() }
         } else if aliveCount < total / 12 {
             injectPattern()
         }
+    }
+
+    private func boardHash() -> Int {
+        // FNV-1a-style hash of alive/dead bitmap
+        var h = 2166136261
+        for x in 0..<width {
+            for y in 0..<height {
+                h ^= cells[x][y].alive ? 1 : 0
+                h &*= 16777619
+            }
+        }
+        return h
     }
 
     private func injectPattern() {
