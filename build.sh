@@ -14,13 +14,23 @@ rm -rf build/
 # Create .app bundle structure
 mkdir -p "${MACOS_DIR}"
 
-# Compile
+# Compile Metal shaders
+RESOURCES_DIR="${CONTENTS_DIR}/Resources"
+mkdir -p "${RESOURCES_DIR}"
+echo "Compiling Metal shaders..."
+xcrun -sdk macosx metal -c Sources/Shaders.metal -o build/Shaders.air
+xcrun -sdk macosx metallib build/Shaders.air -o "${RESOURCES_DIR}/default.metallib"
+rm -f build/Shaders.air
+
+# Compile Swift
 swiftc \
     -O \
     -o "${MACOS_DIR}/LivingGlass" \
     -framework AppKit \
-    -framework QuartzCore \
+    -framework Metal \
+    -framework MetalKit \
     Sources/GameEngine.swift \
+    Sources/MetalRenderer.swift \
     Sources/GameOfLifeView.swift \
     Sources/AppDelegate.swift \
     Sources/main.swift
@@ -29,8 +39,6 @@ swiftc \
 cp Info.plist "${CONTENTS_DIR}/Info.plist"
 
 # Generate .icns from iconset if iconutil is available
-RESOURCES_DIR="${CONTENTS_DIR}/Resources"
-mkdir -p "${RESOURCES_DIR}"
 if command -v iconutil &>/dev/null && [ -d icon.iconset ]; then
     iconutil -c icns icon.iconset -o "${RESOURCES_DIR}/AppIcon.icns"
     echo "App icon bundled."

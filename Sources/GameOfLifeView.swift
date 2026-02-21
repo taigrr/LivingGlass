@@ -1,4 +1,5 @@
 import AppKit
+import MetalKit
 
 // MARK: - Per-Cell Animation State
 
@@ -6,25 +7,16 @@ struct CellAnim {
     enum State { case empty, spawning, alive, dying }
 
     var state: State = .empty
-    var progress: CGFloat = 0       // 0→1 for spawning/dying transitions
+    var progress: CGFloat = 0
     var colorIndex: Int = 0
-    var bobPhase: CGFloat = 0       // random offset for idle floating
+    var bobPhase: CGFloat = 0
     var age: Int = 0
 }
 
-// MARK: - Precomputed Face Colors
-
-struct CubeFaces {
-    let topR: CGFloat, topG: CGFloat, topB: CGFloat
-    let leftR: CGFloat, leftG: CGFloat, leftB: CGFloat
-    let rightR: CGFloat, rightG: CGFloat, rightB: CGFloat
-}
-
-// MARK: - Isometric Game of Life View
+// MARK: - Metal-backed Isometric Game of Life View
 
 class GameOfLifeView: NSView {
-    // Isometric geometry — shallow angle (4:1 ratio), large tiles
-    // Dynamic: computed from screen size in initGrid()
+    // Tile geometry (dynamic, computed from screen size)
     var tileW: CGFloat = 72
     var tileH: CGFloat = 18
     var maxCubeH: CGFloat = 40
@@ -36,27 +28,16 @@ class GameOfLifeView: NSView {
     // Render loop
     var displayTimer: Timer?
     var frameCount: Int = 0
-    let gameTickEvery = 120         // game steps every 120 render frames (~1 per 2sec at 60fps)
+    let gameTickEvery = 120
     var globalTime: CGFloat = 0
 
-    // Precomputed
-    static let bgColor = NSColor(hex: 0x121117).cgColor
-    static let bgNSColor = NSColor(hex: 0x121117)
-    static let faceColors: [CubeFaces] = GameEngine.palette.map { color in
-        let c = color.usingColorSpace(.sRGB) ?? color
-        let r = c.redComponent, g = c.greenComponent, b = c.blueComponent
-        return CubeFaces(
-            topR: min(r * 1.3, 1), topG: min(g * 1.3, 1), topB: min(b * 1.3, 1),
-            leftR: r * 0.7, leftG: g * 0.7, leftB: b * 0.7,
-            rightR: r * 0.45, rightG: g * 0.45, rightB: b * 0.45
-        )
-    }
+    // Metal
+    var mtkView: MTKView!
+    var renderer: MetalRenderer?
 
     // Grid origin for centering
     var originX: CGFloat = 0
     var originY: CGFloat = 0
-
-    override var isOpaque: Bool { true }
 
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -70,17 +51,31 @@ class GameOfLifeView: NSView {
 
     private func setup() {
         wantsLayer = true
-        layer?.backgroundColor = Self.bgColor
-        layer?.drawsAsynchronously = true
+
+        // Create MTKView
+        mtkView = MTKView(frame: bounds)
+        mtkView.autoresizingMask = [.width, .height]
+        mtkView.colorPixelFormat = .bgra8Unorm
+        mtkView.clearColor = MTLClearColor(red: 0x12/255.0, green: 0x11/255.0, blue: 0x17/255.0, alpha: 1)
+        mtkView.isPaused = true           // We drive rendering manually
+        mtkView.enableSetNeedsDisplay = false
+        addSubview(mtkView)
+
+        renderer = MetalRenderer(mtkView: mtkView)
+        mtkView.delegate = renderer
+
+        // Trigger initial size
+        if let renderer = renderer {
+            renderer.mtkView(mtkView, drawableSizeWillChange: mtkView.drawableSize)
+        }
+
         initGrid()
         startTimer()
     }
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
-        if let scale = window?.backingScaleFactor {
-            layer?.contentsScale = scale
-        }
+        mtkView.frame = bounds
     }
 
     // MARK: - Grid Setup
@@ -89,21 +84,11 @@ class GameOfLifeView: NSView {
         let screenW = bounds.width
         let screenH = bounds.height
 
-        // Scale tile size relative to screen — target ~40 tiles across the screen width
-        // This keeps density consistent across resolutions (1080p → 8K)
         let targetTilesAcross: CGFloat = 20
         tileW = max(floor(screenW / targetTilesAcross), 24)
-        tileH = floor(tileW / 4)     // shallow isometric angle (4:1 ratio)
+        tileH = floor(tileW / 4)
         maxCubeH = floor(tileW * 0.55)
 
-        // The isometric diamond for an n×n grid has:
-        //   width  = 2n * halfW
-        //   height = 2n * halfH
-        // To fully cover the screen (including corners), we need the diamond
-        // to be larger than the screen diagonal in both iso dimensions.
-        // Solve: 2n * halfW >= screenW AND 2n * halfH >= screenH
-        // But the diamond is rotated 45°, so corners of the screen may poke out.
-        // Over-provision by using the diagonal of the screen as the required coverage.
         let diagonal = sqrt(screenW * screenW + screenH * screenH)
         let nForWidth = Int(ceil(diagonal / tileW)) + 4
         let nForHeight = Int(ceil(diagonal / tileH)) + 4
@@ -112,12 +97,11 @@ class GameOfLifeView: NSView {
         engine = GameEngine(width: gridSize, height: gridSize)
         anims = Array(repeating: Array(repeating: CellAnim(), count: gridSize), count: gridSize)
 
-        // Center the grid on screen
         originX = bounds.midX
         let visualHeight = CGFloat(gridSize * 2) * (tileH / 2) + maxCubeH
         originY = bounds.midY + visualHeight / 2
 
-        // Sync initial engine state to animation
+        // Sync initial state
         for x in 0..<gridSize {
             for y in 0..<gridSize {
                 if engine.cells[x][y].alive {
@@ -128,6 +112,9 @@ class GameOfLifeView: NSView {
                 }
             }
         }
+
+        renderer?.tileW = Float(tileW)
+        renderer?.tileH = Float(tileH)
     }
 
     // MARK: - Render Loop
@@ -136,7 +123,6 @@ class GameOfLifeView: NSView {
         let timer = Timer(timeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
             self?.renderFrame()
         }
-        // Always add to main run loop in .common mode so it fires during menu tracking too
         RunLoop.main.add(timer, forMode: .common)
         displayTimer = timer
     }
@@ -145,7 +131,6 @@ class GameOfLifeView: NSView {
         frameCount += 1
         globalTime += 1.0 / 60.0
 
-        // Step game logic at slower rate
         if frameCount % gameTickEvery == 0 {
             let old = engine.cells
             engine.step()
@@ -153,7 +138,7 @@ class GameOfLifeView: NSView {
         }
 
         updateAnimations()
-        needsDisplay = true
+        buildAndRender()
     }
 
     private func syncAnimations(old: [[Cell]]) {
@@ -202,204 +187,151 @@ class GameOfLifeView: NSView {
         }
     }
 
-    // MARK: - Drawing
+    // MARK: - Build Instance Buffer & Render
 
-    override func draw(_ dirtyRect: NSRect) {
-        guard let ctx = NSGraphicsContext.current?.cgContext else { return }
-
-        ctx.setFillColor(Self.bgColor)
-        ctx.fill(bounds)
+    private func buildAndRender() {
+        guard let renderer = renderer else { return }
 
         let halfW = tileW / 2
         let halfH = tileH / 2
         let w = engine.width, h = engine.height
+        let palette = MetalRenderer.faceColors
 
-        // Draw back-to-front: in macOS Y-up coords, back = higher Y, so draw decreasing (x+y)
+        // Use drawableSize for pixel-accurate positioning
+        let drawableSize = mtkView.drawableSize
+        let scaleX = CGFloat(drawableSize.width) / bounds.width
+        let scaleY = CGFloat(drawableSize.height) / bounds.height
+
+        var instances: [CubeInstance] = []
+        instances.reserveCapacity(w * h / 3)  // rough estimate of visible cells
+
+        // Back-to-front: decreasing (x+y) since Y is flipped
         for y in stride(from: h - 1, through: 0, by: -1) {
             for x in stride(from: w - 1, through: 0, by: -1) {
                 let anim = anims[x][y]
                 if anim.state == .empty { continue }
 
-                let sx = originX + CGFloat(x - y) * halfW
-                let sy = originY - CGFloat(x + y) * halfH
-                let faces = Self.faceColors[anim.colorIndex]
+                let baseSX = originX + CGFloat(x - y) * halfW
+                let baseSY = originY - CGFloat(x + y) * halfH
+
+                let faces = palette[anim.colorIndex]
 
                 switch anim.state {
                 case .spawning:
-                    drawSpawning(ctx: ctx, sx: sx, sy: sy, anim: anim, faces: faces)
+                    let t = anim.progress
+                    let eased = easeOutBack(t)
+                    let scale = max(eased, 0.01)
+                    let cubeH = Float(maxCubeH * scale)
+                    let alpha = Float(min(t * 2.5, 1.0))
+
+                    let px = Float(baseSX * scaleX)
+                    let py = Float(baseSY * scaleY)
+
+                    instances.append(CubeInstance(
+                        posHeightScale: SIMD4<Float>(px, py, cubeH, Float(scale * tileW)),
+                        topColor: SIMD4<Float>(faces.top, alpha),
+                        leftColor: SIMD4<Float>(faces.left, 0),
+                        rightColor: SIMD4<Float>(faces.right, 0)
+                    ))
+
                 case .alive:
-                    drawAlive(ctx: ctx, sx: sx, sy: sy, anim: anim, faces: faces)
+                    let bob = sin(globalTime * 0.12 + anim.bobPhase) * 2.0
+                    let breathe = sin(globalTime * 0.08 + anim.bobPhase * 0.7) * 0.5
+                    let cubeH = Float(maxCubeH + breathe)
+
+                    let px = Float(baseSX * scaleX)
+                    let py = Float((baseSY + bob) * scaleY)
+
+                    // Brighten with age
+                    let ageFactor = min(Float(anim.age) / 180.0, 1.0)
+                    let bright = 1.0 + ageFactor * 0.15
+                    let top = SIMD3<Float>(min(faces.top.x * bright, 1),
+                                           min(faces.top.y * bright, 1),
+                                           min(faces.top.z * bright, 1))
+                    let left = SIMD3<Float>(min(faces.left.x * bright, 1),
+                                            min(faces.left.y * bright, 1),
+                                            min(faces.left.z * bright, 1))
+                    let right = SIMD3<Float>(min(faces.right.x * bright, 1),
+                                             min(faces.right.y * bright, 1),
+                                             min(faces.right.z * bright, 1))
+
+                    instances.append(CubeInstance(
+                        posHeightScale: SIMD4<Float>(px, py, cubeH, Float(tileW)),
+                        topColor: SIMD4<Float>(top, 1.0),
+                        leftColor: SIMD4<Float>(left, 0),
+                        rightColor: SIMD4<Float>(right, 0)
+                    ))
+
                 case .dying:
-                    drawDying(ctx: ctx, sx: sx, sy: sy, anim: anim, faces: faces)
+                    let t = anim.progress
+
+                    if t < 0.35 {
+                        // Vibration phase
+                        let vibT = t / 0.35
+                        let intensity = vibT * 3.5
+                        let wobX = CGFloat.random(in: -intensity...intensity)
+                        let wobY = CGFloat.random(in: -intensity...intensity)
+
+                        let px = Float((baseSX + wobX) * scaleX)
+                        let py = Float((baseSY + wobY) * scaleY)
+
+                        // Tint toward red
+                        let vf = Float(vibT)
+                        let top = SIMD3<Float>(min(faces.top.x + vf * 0.15, 1),
+                                               faces.top.y * (1 - vf * 0.2),
+                                               faces.top.z * (1 - vf * 0.3))
+                        let left = SIMD3<Float>(min(faces.left.x + vf * 0.1, 1),
+                                                faces.left.y * (1 - vf * 0.2),
+                                                faces.left.z * (1 - vf * 0.3))
+                        let right = SIMD3<Float>(min(faces.right.x + vf * 0.08, 1),
+                                                  faces.right.y * (1 - vf * 0.2),
+                                                  faces.right.z * (1 - vf * 0.3))
+
+                        instances.append(CubeInstance(
+                            posHeightScale: SIMD4<Float>(px, py, Float(maxCubeH), Float(tileW)),
+                            topColor: SIMD4<Float>(top, 1.0),
+                            leftColor: SIMD4<Float>(left, 0),
+                            rightColor: SIMD4<Float>(right, 0)
+                        ))
+                    } else {
+                        // Falling phase
+                        let fallT = (t - 0.35) / 0.65
+                        let eased = easeInCubic(fallT)
+                        let fallDist = eased * maxCubeH * 3.0
+                        let alpha = Float(1.0 - eased)
+                        let shrink = 1.0 - eased * 0.4
+                        let cubeH = Float(maxCubeH * shrink)
+
+                        let tumbleX = sin(fallT * 0.8) * (1.0 - fallT) * 3.0
+
+                        let px = Float((baseSX + tumbleX) * scaleX)
+                        let py = Float((baseSY - fallDist) * scaleY)
+
+                        // Fade toward background
+                        let ef = Float(eased * 0.5)
+                        let top = SIMD3<Float>(faces.top.x * (1 - ef), faces.top.y * (1 - ef), faces.top.z * (1 - ef))
+                        let left = SIMD3<Float>(faces.left.x * (1 - ef), faces.left.y * (1 - ef), faces.left.z * (1 - ef))
+                        let right = SIMD3<Float>(faces.right.x * (1 - ef), faces.right.y * (1 - ef), faces.right.z * (1 - ef))
+
+                        instances.append(CubeInstance(
+                            posHeightScale: SIMD4<Float>(px, py, cubeH, Float(tileW * shrink)),
+                            topColor: SIMD4<Float>(top, alpha),
+                            leftColor: SIMD4<Float>(left, 0),
+                            rightColor: SIMD4<Float>(right, 0)
+                        ))
+                    }
+
                 case .empty:
                     break
                 }
             }
         }
+
+        renderer.updateInstances(instances)
+        mtkView.draw()
     }
 
-    private func drawSpawning(ctx: CGContext, sx: CGFloat, sy: CGFloat, anim: CellAnim, faces: CubeFaces) {
-        let t = anim.progress
-        let eased = easeOutBack(t)
-        let scale = max(eased, 0.01)
-
-        // Cube expands in place from nothing to full size
-        let cubeH = maxCubeH * scale
-        let scaledTileW = tileW * scale
-        let scaledTileH = tileH * scale
-        let alpha = min(t * 2.5, 1.0)
-
-        ctx.saveGState()
-        ctx.setAlpha(alpha)
-        drawCubeScaled(ctx: ctx, sx: sx, sy: sy, cubeH: cubeH,
-                       halfW: scaledTileW / 2, halfH: scaledTileH / 2, faces: faces)
-        ctx.restoreGState()
-    }
-
-    private func drawAlive(ctx: CGContext, sx: CGFloat, sy: CGFloat, anim: CellAnim, faces: CubeFaces) {
-        // Gentle idle bob (slowed 10x)
-        let bob = sin(globalTime * 0.12 + anim.bobPhase) * 2.0
-        // Subtle breathing (cube height oscillation, slowed 10x)
-        let breathe = sin(globalTime * 0.08 + anim.bobPhase * 0.7) * 0.5
-        drawCube(ctx: ctx, sx: sx, sy: sy + bob, cubeH: maxCubeH + breathe, faces: faces)
-    }
-
-    private func drawDying(ctx: CGContext, sx: CGFloat, sy: CGFloat, anim: CellAnim, faces: CubeFaces) {
-        let t = anim.progress
-
-        if t < 0.35 {
-            // Phase 1: Vibration — cube shakes with increasing intensity
-            let vibT = t / 0.35
-            let intensity = vibT * 3.5
-            let wobX = CGFloat.random(in: -intensity...intensity)
-            let wobY = CGFloat.random(in: -intensity...intensity)
-
-            // Tint toward red as it destabilizes
-            let tintR = min(faces.topR + vibT * 0.15, 1.0)
-            let tinted = CubeFaces(
-                topR: tintR, topG: faces.topG * (1 - vibT * 0.2), topB: faces.topB * (1 - vibT * 0.3),
-                leftR: min(faces.leftR + vibT * 0.1, 1), leftG: faces.leftG * (1 - vibT * 0.2), leftB: faces.leftB * (1 - vibT * 0.3),
-                rightR: min(faces.rightR + vibT * 0.08, 1), rightG: faces.rightG * (1 - vibT * 0.2), rightB: faces.rightB * (1 - vibT * 0.3)
-            )
-
-            drawCube(ctx: ctx, sx: sx + wobX, sy: sy + wobY, cubeH: maxCubeH, faces: tinted)
-
-        } else {
-            // Phase 2: Fall — cube drops away and fades
-            let fallT = (t - 0.35) / 0.65
-            let eased = easeInCubic(fallT)
-            let fallDist = eased * maxCubeH * 3.0
-            let alpha = 1.0 - eased
-            let shrink = 1.0 - eased * 0.4
-            let cubeH = maxCubeH * shrink
-
-            // Slight tumble wobble during fall (slowed)
-            let tumbleX = sin(fallT * 0.8) * (1.0 - fallT) * 3.0
-
-            ctx.saveGState()
-            ctx.setAlpha(alpha)
-            drawCube(ctx: ctx, sx: sx + tumbleX, sy: sy - fallDist, cubeH: cubeH, faces: faces)
-            ctx.restoreGState()
-        }
-    }
-
-    // MARK: - Cube Drawing
-
-    private func drawCubeScaled(ctx: CGContext, sx: CGFloat, sy: CGFloat, cubeH: CGFloat,
-                                halfW: CGFloat, halfH: CGFloat, faces: CubeFaces) {
-        guard cubeH > 0.5 else { return }
-
-        let topN = CGPoint(x: sx, y: sy + halfH + cubeH)
-        let topE = CGPoint(x: sx + halfW, y: sy + cubeH)
-        let topS = CGPoint(x: sx, y: sy - halfH + cubeH)
-        let topW = CGPoint(x: sx - halfW, y: sy + cubeH)
-
-        let botS = CGPoint(x: sx, y: sy - halfH)
-        let botE = CGPoint(x: sx + halfW, y: sy)
-        let botW = CGPoint(x: sx - halfW, y: sy)
-
-        ctx.setFillColor(red: faces.leftR, green: faces.leftG, blue: faces.leftB, alpha: 1)
-        ctx.beginPath()
-        ctx.move(to: topW); ctx.addLine(to: topS); ctx.addLine(to: botS); ctx.addLine(to: botW)
-        ctx.closePath(); ctx.fillPath()
-
-        ctx.setFillColor(red: faces.rightR, green: faces.rightG, blue: faces.rightB, alpha: 1)
-        ctx.beginPath()
-        ctx.move(to: topS); ctx.addLine(to: topE); ctx.addLine(to: botE); ctx.addLine(to: botS)
-        ctx.closePath(); ctx.fillPath()
-
-        ctx.setFillColor(red: faces.topR, green: faces.topG, blue: faces.topB, alpha: 1)
-        ctx.beginPath()
-        ctx.move(to: topN); ctx.addLine(to: topE); ctx.addLine(to: topS); ctx.addLine(to: topW)
-        ctx.closePath(); ctx.fillPath()
-
-        ctx.setStrokeColor(red: min(faces.topR + 0.15, 1), green: min(faces.topG + 0.15, 1),
-                           blue: min(faces.topB + 0.15, 1), alpha: 0.4)
-        ctx.setLineWidth(max(halfW / 20.0, 0.5))
-        ctx.beginPath()
-        ctx.move(to: topW); ctx.addLine(to: topN); ctx.addLine(to: topE)
-        ctx.strokePath()
-    }
-
-    private func drawCube(ctx: CGContext, sx: CGFloat, sy: CGFloat, cubeH: CGFloat, faces: CubeFaces) {
-        let halfW = tileW / 2
-        let halfH = tileH / 2
-
-        guard cubeH > 0.5 else { return }
-
-        // Top face (diamond) — cubeH extends upward (+Y in macOS coords)
-        let topN = CGPoint(x: sx, y: sy + halfH + cubeH)
-        let topE = CGPoint(x: sx + halfW, y: sy + cubeH)
-        let topS = CGPoint(x: sx, y: sy - halfH + cubeH)
-        let topW = CGPoint(x: sx - halfW, y: sy + cubeH)
-
-        // Ground-level vertices
-        let botS = CGPoint(x: sx, y: sy - halfH)
-        let botE = CGPoint(x: sx + halfW, y: sy)
-        let botW = CGPoint(x: sx - halfW, y: sy)
-
-        // Left face (west side — visible below top, going down-left)
-        ctx.setFillColor(red: faces.leftR, green: faces.leftG, blue: faces.leftB, alpha: 1)
-        ctx.beginPath()
-        ctx.move(to: topW)
-        ctx.addLine(to: topS)
-        ctx.addLine(to: botS)
-        ctx.addLine(to: botW)
-        ctx.closePath()
-        ctx.fillPath()
-
-        // Right face (east side — visible below top, going down-right)
-        ctx.setFillColor(red: faces.rightR, green: faces.rightG, blue: faces.rightB, alpha: 1)
-        ctx.beginPath()
-        ctx.move(to: topS)
-        ctx.addLine(to: topE)
-        ctx.addLine(to: botE)
-        ctx.addLine(to: botS)
-        ctx.closePath()
-        ctx.fillPath()
-
-        // Top face
-        ctx.setFillColor(red: faces.topR, green: faces.topG, blue: faces.topB, alpha: 1)
-        ctx.beginPath()
-        ctx.move(to: topN)
-        ctx.addLine(to: topE)
-        ctx.addLine(to: topS)
-        ctx.addLine(to: topW)
-        ctx.closePath()
-        ctx.fillPath()
-
-        // Subtle edge highlight on top face
-        ctx.setStrokeColor(red: min(faces.topR + 0.15, 1), green: min(faces.topG + 0.15, 1),
-                           blue: min(faces.topB + 0.15, 1), alpha: 0.4)
-        ctx.setLineWidth(max(tileW / 40.0, 0.5))
-        ctx.beginPath()
-        ctx.move(to: topW)
-        ctx.addLine(to: topN)
-        ctx.addLine(to: topE)
-        ctx.strokePath()
-    }
-
-    // MARK: - Easing Functions
+    // MARK: - Easing
 
     private func easeOutBack(_ t: CGFloat) -> CGFloat {
         let c1: CGFloat = 1.70158
@@ -415,7 +347,6 @@ class GameOfLifeView: NSView {
 
     func reset() {
         engine.randomize()
-        // Re-sync animation state
         for x in 0..<engine.width {
             for y in 0..<engine.height {
                 if engine.cells[x][y].alive {
@@ -428,7 +359,6 @@ class GameOfLifeView: NSView {
                 }
             }
         }
-        needsDisplay = true
     }
 
     func pause() {
