@@ -6,6 +6,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var statusItem: NSStatusItem!
     var powerTimer: Timer?
     var isPaused = false
+    var manualPause = false
+    var pauseMenuItem: NSMenuItem!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Poll power state every 30s
@@ -28,6 +30,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         let menu = NSMenu()
+        pauseMenuItem = NSMenuItem(title: "Pause", action: #selector(togglePause), keyEquivalent: "p")
+        menu.addItem(pauseMenuItem)
         menu.addItem(NSMenuItem(title: "Reset", action: #selector(resetAll), keyEquivalent: "r"))
         menu.addItem(NSMenuItem.separator())
         menu.addItem(NSMenuItem(title: "Quit LivingGlass", action: #selector(quit), keyEquivalent: "q"))
@@ -89,6 +93,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    @objc func togglePause() {
+        manualPause.toggle()
+        if manualPause {
+            pause()
+            pauseMenuItem.title = "Resume"
+            statusItem.button?.title = "⏸"
+        } else {
+            // Only resume if low power mode isn't active
+            if !ProcessInfo.processInfo.isLowPowerModeEnabled {
+                resume()
+            }
+            pauseMenuItem.title = "Pause"
+            statusItem.button?.title = "🧬"
+        }
+    }
+
     @objc func powerStateChanged() {
         checkPowerState()
     }
@@ -99,7 +119,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let isLowPower = ProcessInfo.processInfo.isLowPowerModeEnabled
         if isLowPower && !isPaused {
             pause()
-        } else if !isLowPower && isPaused {
+        } else if !isLowPower && isPaused && !manualPause {
             resume()
         }
     }

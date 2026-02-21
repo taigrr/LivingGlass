@@ -6,6 +6,10 @@ class GameOfLifeView: NSView {
     var timer: Timer?
     let tickInterval: TimeInterval = 0.1
 
+    // Cache colors to avoid repeated allocation
+    private static let bgColor = NSColor(hex: 0x121117).cgColor
+    private static let caviarColor = NSColor(hex: 0x121117)
+
     override init(frame: NSRect) {
         super.init(frame: frame)
         setup()
@@ -16,14 +20,36 @@ class GameOfLifeView: NSView {
         setup()
     }
 
+    // Retina support
+    override var isOpaque: Bool { true }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        if let scale = window?.backingScaleFactor {
+            let logicalWidth = bounds.width
+            let logicalHeight = bounds.height
+            let cols = Int(logicalWidth / cellSize)
+            let rows = Int(logicalHeight / cellSize)
+            if engine == nil || cols != engine.width || rows != engine.height {
+                engine = GameEngine(width: max(cols, 10), height: max(rows, 10))
+            }
+            layer?.contentsScale = scale
+        }
+    }
+
     private func setup() {
         wantsLayer = true
-        layer?.backgroundColor = NSColor(hex: 0x121117).cgColor
+        layer?.backgroundColor = Self.bgColor
+        layer?.drawsAsynchronously = true
 
         let cols = Int(bounds.width / cellSize)
         let rows = Int(bounds.height / cellSize)
         engine = GameEngine(width: max(cols, 10), height: max(rows, 10))
 
+        startTimer()
+    }
+
+    private func startTimer() {
         timer = Timer.scheduledTimer(withTimeInterval: tickInterval, repeats: true) { [weak self] _ in
             self?.tick()
         }
@@ -37,11 +63,11 @@ class GameOfLifeView: NSView {
     override func draw(_ dirtyRect: NSRect) {
         guard let ctx = NSGraphicsContext.current?.cgContext else { return }
 
-        // Charmtone caviar background
-        ctx.setFillColor(NSColor(hex: 0x121117).cgColor)
+        ctx.setFillColor(Self.bgColor)
         ctx.fill(bounds)
 
         let palette = GameEngine.palette
+        let cs = cellSize
 
         for x in 0..<engine.width {
             for y in 0..<engine.height {
@@ -49,7 +75,6 @@ class GameOfLifeView: NSView {
 
                 if cell.alive {
                     let baseColor = palette[cell.colorIndex]
-                    // Brighten slightly with age
                     let ageFactor = min(CGFloat(cell.age) / 30.0, 1.0)
                     let brightness = 0.7 + 0.3 * ageFactor
                     let color = baseColor.blended(with: .white, fraction: ageFactor * 0.2)
@@ -58,10 +83,10 @@ class GameOfLifeView: NSView {
                     ctx.setFillColor(color.withAlphaComponent(brightness).cgColor)
 
                     let rect = CGRect(
-                        x: CGFloat(x) * cellSize + 0.5,
-                        y: CGFloat(y) * cellSize + 0.5,
-                        width: cellSize - 1,
-                        height: cellSize - 1
+                        x: CGFloat(x) * cs + 0.5,
+                        y: CGFloat(y) * cs + 0.5,
+                        width: cs - 1,
+                        height: cs - 1
                     )
                     ctx.fillEllipse(in: rect)
 
@@ -78,21 +103,18 @@ class GameOfLifeView: NSView {
                     let alpha = (1.0 - progress) * 0.85
                     let baseColor = palette[cell.colorIndex]
 
-                    // Shift toward charmtone caviar as cell dies
-                    let dyingColor = baseColor.blended(with: NSColor(hex: 0x121117), fraction: progress * 0.6)
+                    let dyingColor = baseColor.blended(with: Self.caviarColor, fraction: progress * 0.6)
                         ?? baseColor
 
                     ctx.setFillColor(dyingColor.withAlphaComponent(alpha).cgColor)
 
-                    // Apply jitter
                     let rect = CGRect(
-                        x: CGFloat(x) * cellSize + 0.5 + cell.jitterX,
-                        y: CGFloat(y) * cellSize + 0.5 + cell.jitterY,
-                        width: cellSize - 1,
-                        height: cellSize - 1
+                        x: CGFloat(x) * cs + 0.5 + cell.jitterX,
+                        y: CGFloat(y) * cs + 0.5 + cell.jitterY,
+                        width: cs - 1,
+                        height: cs - 1
                     )
 
-                    // Shrink as it dies
                     let shrink = progress * 2.0
                     let shrunkRect = rect.insetBy(dx: shrink, dy: shrink)
                     if shrunkRect.width > 0 && shrunkRect.height > 0 {
@@ -106,14 +128,11 @@ class GameOfLifeView: NSView {
     func pause() {
         timer?.invalidate()
         timer = nil
-        // Freeze on current frame — no redraw needed
     }
 
     func resume() {
         guard timer == nil else { return }
-        timer = Timer.scheduledTimer(withTimeInterval: tickInterval, repeats: true) { [weak self] _ in
-            self?.tick()
-        }
+        startTimer()
     }
 
     func resize(to size: NSSize) {
