@@ -96,9 +96,6 @@ class GameOfLifeView: NSView {
         tileH = floor(tileW / 4)     // shallow isometric angle (4:1 ratio)
         maxCubeH = floor(tileW * 0.55)
 
-        let halfW = tileW / 2
-        let halfH = tileH / 2
-
         // The isometric diamond for an n×n grid has:
         //   width  = 2n * halfW
         //   height = 2n * halfH
@@ -117,7 +114,7 @@ class GameOfLifeView: NSView {
 
         // Center the grid on screen
         originX = bounds.midX
-        let visualHeight = CGFloat(gridSize * 2) * halfH + maxCubeH
+        let visualHeight = CGFloat(gridSize * 2) * (tileH / 2) + maxCubeH
         originY = bounds.midY + visualHeight / 2
 
         // Sync initial engine state to animation
