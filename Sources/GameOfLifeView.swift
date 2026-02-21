@@ -265,8 +265,10 @@ class GameOfLifeView: NSView {
                     let cubeH = Float(maxCubeH * scale)
                     let alpha = Float(min(t * 2.5, 1.0))
 
+                    // Offset Y so cube scales from its visual center (not bottom)
+                    let centerOffset = Float(maxCubeH) * 0.5 * (1.0 - Float(scale))
                     let px = Float(baseSX)
-                    let py = Float(baseSY)
+                    let py = Float(baseSY) + centerOffset
 
                     instances.append(CubeInstance(
                         posHeightScale: SIMD4<Float>(px, py, cubeH * bScale, Float(scale * tileW) * bScale),
