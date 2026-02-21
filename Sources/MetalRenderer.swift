@@ -28,6 +28,7 @@ class MetalRenderer: NSObject, MTKViewDelegate {
     let device: MTLDevice
     let commandQueue: MTLCommandQueue
     let pipelineState: MTLRenderPipelineState
+    let depthStencilState: MTLDepthStencilState
     let vertexBuffer: MTLBuffer
     let vertexCount: Int
 
@@ -57,45 +58,22 @@ class MetalRenderer: NSObject, MTKViewDelegate {
         guard let device = MTLCreateSystemDefaultDevice() else { return nil }
         self.device = device
         mtkView.device = device
+        mtkView.depthStencilPixelFormat = .depth32Float
 
         guard let queue = device.makeCommandQueue() else { return nil }
         self.commandQueue = queue
 
-        // Load shader library
-        guard let library = try? device.makeDefaultLibrary(bundle: Bundle.main) else {
-            // Fallback: try loading from alongside executable
-            guard let libURL = Bundle.main.url(forResource: "default", withExtension: "metallib"),
-                  let library = try? device.makeLibrary(URL: libURL) else {
-                return nil
-            }
-            guard let vertFunc = library.makeFunction(name: "vertex_main"),
-                  let fragFunc = library.makeFunction(name: "fragment_main") else { return nil }
-
-            let desc = MTLRenderPipelineDescriptor()
-            desc.vertexFunction = vertFunc
-            desc.fragmentFunction = fragFunc
-            desc.colorAttachments[0].pixelFormat = mtkView.colorPixelFormat
-            desc.colorAttachments[0].isBlendingEnabled = true
-            desc.colorAttachments[0].sourceRGBBlendFactor = .sourceAlpha
-            desc.colorAttachments[0].destinationRGBBlendFactor = .oneMinusSourceAlpha
-            desc.colorAttachments[0].sourceAlphaBlendFactor = .one
-            desc.colorAttachments[0].destinationAlphaBlendFactor = .oneMinusSourceAlpha
-
-            guard let ps = try? device.makeRenderPipelineState(descriptor: desc) else { return nil }
-            self.pipelineState = ps
-
-            // Build unit cube template
-            let (verts, count) = MetalRenderer.buildCubeTemplate()
-            guard let vb = device.makeBuffer(bytes: verts, length: MemoryLayout<Vertex>.stride * count) else { return nil }
-            self.vertexBuffer = vb
-            self.vertexCount = count
-            super.init()
-            return
+        // Load shader library (try bundle first, then alongside executable)
+        var library: MTLLibrary?
+        library = try? device.makeDefaultLibrary(bundle: Bundle.main)
+        if library == nil, let libURL = Bundle.main.url(forResource: "default", withExtension: "metallib") {
+            library = try? device.makeLibrary(URL: libURL)
         }
+        guard let lib = library,
+              let vertFunc = lib.makeFunction(name: "vertex_main"),
+              let fragFunc = lib.makeFunction(name: "fragment_main") else { return nil }
 
-        guard let vertFunc = library.makeFunction(name: "vertex_main"),
-              let fragFunc = library.makeFunction(name: "fragment_main") else { return nil }
-
+        // Pipeline with depth
         let desc = MTLRenderPipelineDescriptor()
         desc.vertexFunction = vertFunc
         desc.fragmentFunction = fragFunc
@@ -105,9 +83,17 @@ class MetalRenderer: NSObject, MTKViewDelegate {
         desc.colorAttachments[0].destinationRGBBlendFactor = .oneMinusSourceAlpha
         desc.colorAttachments[0].sourceAlphaBlendFactor = .one
         desc.colorAttachments[0].destinationAlphaBlendFactor = .oneMinusSourceAlpha
+        desc.depthAttachmentPixelFormat = .depth32Float
 
         guard let ps = try? device.makeRenderPipelineState(descriptor: desc) else { return nil }
         self.pipelineState = ps
+
+        // Depth stencil: closer cubes occlude farther ones
+        let depthDesc = MTLDepthStencilDescriptor()
+        depthDesc.depthCompareFunction = .less
+        depthDesc.isDepthWriteEnabled = true
+        guard let dss = device.makeDepthStencilState(descriptor: depthDesc) else { return nil }
+        self.depthStencilState = dss
 
         // Build unit cube template
         let (verts, count) = MetalRenderer.buildCubeTemplate()
@@ -191,6 +177,7 @@ class MetalRenderer: NSObject, MTKViewDelegate {
               let encoder = cmdBuffer.makeRenderCommandEncoder(descriptor: rpd) else { return }
 
         encoder.setRenderPipelineState(pipelineState)
+        encoder.setDepthStencilState(depthStencilState)
         encoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
         encoder.setVertexBuffer(instanceBuffer, offset: 0, index: 1)
 

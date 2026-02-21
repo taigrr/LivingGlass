@@ -222,14 +222,18 @@ class GameOfLifeView: NSView {
         var instances: [CubeInstance] = []
         instances.reserveCapacity(w * h / 3)  // rough estimate of visible cells
 
-        // Back-to-front: decreasing (x+y) since Y is flipped
-        for y in stride(from: h - 1, through: 0, by: -1) {
-            for x in stride(from: w - 1, through: 0, by: -1) {
+        let maxDepth = Float(w + h - 2)
+
+        for y in 0..<h {
+            for x in 0..<w {
                 let anim = anims[x][y]
                 if anim.state == .empty { continue }
 
                 let baseSX = originX + CGFloat(x - y) * halfW
                 let baseSY = originY - CGFloat(x + y) * halfH
+
+                // Normalized depth: 0=back (small x+y), 1=front (large x+y)
+                let depth = maxDepth > 0 ? Float(x + y) / maxDepth : 0
 
                 let faces = palette[anim.colorIndex]
 
@@ -247,7 +251,7 @@ class GameOfLifeView: NSView {
                     instances.append(CubeInstance(
                         posHeightScale: SIMD4<Float>(px, py, cubeH, Float(scale * tileW)),
                         topColor: SIMD4<Float>(faces.top, alpha),
-                        leftColor: SIMD4<Float>(faces.left, 0),
+                        leftColor: SIMD4<Float>(faces.left, depth),
                         rightColor: SIMD4<Float>(faces.right, 0)
                     ))
 
@@ -275,7 +279,7 @@ class GameOfLifeView: NSView {
                     instances.append(CubeInstance(
                         posHeightScale: SIMD4<Float>(px, py, cubeH, Float(tileW)),
                         topColor: SIMD4<Float>(top, 1.0),
-                        leftColor: SIMD4<Float>(left, 0),
+                        leftColor: SIMD4<Float>(left, depth),
                         rightColor: SIMD4<Float>(right, 0)
                     ))
 
@@ -307,7 +311,7 @@ class GameOfLifeView: NSView {
                         instances.append(CubeInstance(
                             posHeightScale: SIMD4<Float>(px, py, Float(maxCubeH), Float(tileW)),
                             topColor: SIMD4<Float>(top, 1.0),
-                            leftColor: SIMD4<Float>(left, 0),
+                            leftColor: SIMD4<Float>(left, depth),
                             rightColor: SIMD4<Float>(right, 0)
                         ))
                     } else {
@@ -333,7 +337,7 @@ class GameOfLifeView: NSView {
                         instances.append(CubeInstance(
                             posHeightScale: SIMD4<Float>(px, py, cubeH, Float(tileW * shrink)),
                             topColor: SIMD4<Float>(top, alpha),
-                            leftColor: SIMD4<Float>(left, 0),
+                            leftColor: SIMD4<Float>(left, depth),
                             rightColor: SIMD4<Float>(right, 0)
                         ))
                     }

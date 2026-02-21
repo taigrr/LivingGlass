@@ -12,7 +12,7 @@ struct VertexIn {
 struct InstanceIn {
     float4 posHeightScale;  // xy=screenPos, z=cubeHeight, w=scale
     float4 topColor;        // rgb, a=alpha for whole cube
-    float4 leftColor;       // rgb
+    float4 leftColor;       // rgb, a=depth (0=back, 1=front)
     float4 rightColor;      // rgb
 };
 
@@ -52,8 +52,12 @@ vertex VertexOut vertex_main(uint vertexId [[vertex_id]],
     else if (v.faceIndex == 1) c = inst.leftColor.rgb;
     else c = inst.rightColor.rgb;
 
+    // Depth from grid position (passed in leftColor.a): 0=back, 1=front
+    // Invert for Metal depth (0=near, 1=far): back cubes get larger Z
+    float depth = 1.0 - inst.leftColor.a;
+
     VertexOut out;
-    out.position = float4(ndc, 0.0, 1.0);
+    out.position = float4(ndc, depth, 1.0);
     out.color = float4(c, alpha);
     return out;
 }
