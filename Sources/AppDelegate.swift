@@ -65,14 +65,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             screen: screen
         )
 
-        window.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopWindow)))
-        window.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
+        // Place just above the desktop icons layer
+        window.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopIconWindow)) + 1)
+        window.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle, .fullScreenAuxiliary]
         window.isOpaque = true
         window.hasShadow = false
         window.ignoresMouseEvents = true
         window.backgroundColor = NSColor(hex: 0x121117)
         window.hidesOnDeactivate = false
         window.canHide = false
+        window.animationBehavior = .none
 
         let lifeView = GameOfLifeView(frame: screen.frame)
         window.contentView = lifeView
