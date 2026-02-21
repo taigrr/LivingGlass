@@ -1,0 +1,127 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <!-- Rounded square mask for macOS icon shape -->
+    <clipPath id="iconMask">
+      <rect x="0" y="0" width="1024" height="1024" rx="220" ry="220"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#iconMask)">
+    <!-- Background: charmtone caviar -->
+    <rect width="1024" height="1024" fill="#121117"/>
+
+    <!-- Isometric cube helper: each cube has top, left, right faces -->
+    <!-- Grid of cubes at shallow isometric angle (4:1) -->
+    <!-- Tile: W=120, H=30, cubeHeight=66 -->
+
+    <!-- Back row (3 cubes) -->
+    <!-- Cube (-1, -1) - plum -->
+    <g transform="translate(512, 280)">
+      <!-- left face -->
+      <polygon points="-60,0 0,15 0,81 -60,66" fill="#6B3399"/>
+      <!-- right face -->
+      <polygon points="0,15 60,0 60,66 0,81" fill="#4D2570"/>
+      <!-- top face -->
+      <polygon points="0,-15 60,0 0,15 -60,0" fill="#9953FF"/>
+    </g>
+
+    <!-- Cube (0, -1) - malibu -->
+    <g transform="translate(632, 310)">
+      <polygon points="-60,0 0,15 0,81 -60,66" fill="#0073B3"/>
+      <polygon points="0,15 60,0 60,66 0,81" fill="#005280"/>
+      <polygon points="0,-15 60,0 0,15 -60,0" fill="#00A4FF"/>
+    </g>
+
+    <!-- Cube (-2, -1) - cherry -->
+    <g transform="translate(392, 310)">
+      <polygon points="-60,0 0,15 0,81 -60,66" fill="#B32761"/>
+      <polygon points="0,15 60,0 60,66 0,81" fill="#801C46"/>
+      <polygon points="0,-15 60,0 0,15 -60,0" fill="#FF388B"/>
+    </g>
+
+    <!-- Middle row (4 cubes) -->
+    <!-- Cube (-2, 0) - bengal -->
+    <g transform="translate(332, 370)">
+      <polygon points="-60,0 0,15 0,81 -60,66" fill="#B34D45"/>
+      <polygon points="0,15 60,0 60,66 0,81" fill="#80372F"/>
+      <polygon points="0,-15 60,0 0,15 -60,0" fill="#FF6E63"/>
+    </g>
+
+    <!-- Cube (-1, 0) - dolly -->
+    <g transform="translate(452, 340)">
+      <polygon points="-60,0 0,15 0,81 -60,66" fill="#B343B3"/>
+      <polygon points="0,15 60,0 60,66 0,81" fill="#803080"/>
+      <polygon points="0,-15 60,0 0,15 -60,0" fill="#FF60FF"/>
+    </g>
+
+    <!-- Cube (0, 0) - julep (center, taller) -->
+    <g transform="translate(572, 370)">
+      <polygon points="-60,0 0,15 0,105 -60,90" fill="#00B37D"/>
+      <polygon points="0,15 60,0 60,90 0,105" fill="#008059"/>
+      <polygon points="0,-15 60,0 0,15 -60,0" fill="#00FFB2"/>
+    </g>
+
+    <!-- Cube (1, 0) - thunder -->
+    <g transform="translate(692, 400)">
+      <polygon points="-60,0 0,15 0,81 -60,66" fill="#3253B3"/>
+      <polygon points="0,15 60,0 60,66 0,81" fill="#233B80"/>
+      <polygon points="0,-15 60,0 0,15 -60,0" fill="#4776FF"/>
+    </g>
+
+    <!-- Front row (4 cubes) -->
+    <!-- Cube (-2, 1) - citron -->
+    <g transform="translate(272, 430)">
+      <polygon points="-60,0 0,15 0,81 -60,66" fill="#A2B31B"/>
+      <polygon points="0,15 60,0 60,66 0,81" fill="#748012"/>
+      <polygon points="0,-15 60,0 0,15 -60,0" fill="#E8FF27"/>
+    </g>
+
+    <!-- Cube (-1, 1) - coral -->
+    <g transform="translate(392, 400)">
+      <polygon points="-60,0 0,15 0,81 -60,66" fill="#B33D57"/>
+      <polygon points="0,15 60,0 60,66 0,81" fill="#802C3E"/>
+      <polygon points="0,-15 60,0 0,15 -60,0" fill="#FF577D"/>
+    </g>
+
+    <!-- Cube (0, 1) - crystal -->
+    <g transform="translate(512, 430)">
+      <polygon points="-60,0 0,15 0,81 -60,66" fill="#A441B3"/>
+      <polygon points="0,15 60,0 60,66 0,81" fill="#762F80"/>
+      <polygon points="0,-15 60,0 0,15 -60,0" fill="#EB5DFF"/>
+    </g>
+
+    <!-- Cube (1, 1) - turtle -->
+    <g transform="translate(632, 460)">
+      <polygon points="-60,0 0,15 0,81 -60,66" fill="#079A98"/>
+      <polygon points="0,15 60,0 60,66 0,81" fill="#056E6C"/>
+      <polygon points="0,-15 60,0 0,15 -60,0" fill="#0ADCD9"/>
+    </g>
+
+    <!-- Bottom scattered (2 cubes, dying/fading) -->
+    <!-- Cube (-1, 2) - tang, slightly transparent -->
+    <g transform="translate(332, 460)" opacity="0.6">
+      <polygon points="-60,0 0,15 0,81 -60,66" fill="#B36B3F"/>
+      <polygon points="0,15 60,0 60,66 0,81" fill="#804C2D"/>
+      <polygon points="0,-15 60,0 0,15 -60,0" fill="#FF985A"/>
+    </g>
+
+    <!-- Cube (0, 2) - sapphire, slightly transparent -->
+    <g transform="translate(452, 490)" opacity="0.4">
+      <polygon points="-60,0 0,15 0,81 -60,66" fill="#3333B3"/>
+      <polygon points="0,15 60,0 60,66 0,81" fill="#242480"/>
+      <polygon points="0,-15 60,0 0,15 -60,0" fill="#4949FF"/>
+    </g>
+
+    <!-- Spawning cube top-right, small/growing -->
+    <g transform="translate(752, 340) scale(0.5)" opacity="0.7">
+      <polygon points="-60,0 0,15 0,81 -60,66" fill="#B3577D"/>
+      <polygon points="0,15 60,0 60,66 0,81" fill="#803E59"/>
+      <polygon points="0,-15 60,0 0,15 -60,0" fill="#FF7F90"/>
+    </g>
+
+    <!-- Subtle glow from the center julep cube -->
+    <circle cx="572" cy="370" r="60" fill="#00FFB2" opacity="0.06"/>
+
+    <!-- no watermark -->
+  </g>
+</svg>

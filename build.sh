@@ -28,6 +28,18 @@ swiftc \
 # Copy Info.plist
 cp Info.plist "${CONTENTS_DIR}/Info.plist"
 
+# Generate .icns from iconset if iconutil is available
+RESOURCES_DIR="${CONTENTS_DIR}/Resources"
+mkdir -p "${RESOURCES_DIR}"
+if command -v iconutil &>/dev/null && [ -d icon.iconset ]; then
+    iconutil -c icns icon.iconset -o "${RESOURCES_DIR}/AppIcon.icns"
+    echo "App icon bundled."
+elif [ -d icon.iconset ]; then
+    # Fallback: just copy the iconset for manual conversion
+    cp -r icon.iconset "${RESOURCES_DIR}/"
+    echo "Warning: iconutil not found. Icon iconset copied but not converted."
+fi
+
 echo "Built: ${BUNDLE_DIR}"
 echo ""
 echo "To run:  open \"${BUNDLE_DIR}\""
