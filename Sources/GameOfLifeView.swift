@@ -36,7 +36,7 @@ class GameOfLifeView: NSView {
     // Render loop
     var displayTimer: Timer?
     var frameCount: Int = 0
-    let gameTickEvery = 180         // game steps every 180 render frames (~1 per 3sec at 60fps)
+    let gameTickEvery = 90          // game steps every 90 render frames (~1 per 1.5sec at 60fps)
     var globalTime: CGFloat = 0
 
     // Precomputed
@@ -91,7 +91,7 @@ class GameOfLifeView: NSView {
 
         // Scale tile size relative to screen — target ~40 tiles across the screen width
         // This keeps density consistent across resolutions (1080p → 8K)
-        let targetTilesAcross: CGFloat = 40
+        let targetTilesAcross: CGFloat = 20
         tileW = max(floor(screenW / targetTilesAcross), 24)
         tileH = floor(tileW / 4)     // shallow isometric angle (4:1 ratio)
         maxCubeH = floor(tileW * 0.55)
