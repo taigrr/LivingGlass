@@ -14,7 +14,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let menu = NSMenu()
         menu.addItem(NSMenuItem(title: "Reset", action: #selector(resetAll), keyEquivalent: "r"))
         menu.addItem(NSMenuItem.separator())
-        menu.addItem(NSMenuItem(title: "Quit Life Wallpaper", action: #selector(quit), keyEquivalent: "q"))
+        menu.addItem(NSMenuItem(title: "Quit LivingGlass", action: #selector(quit), keyEquivalent: "q"))
         statusItem.menu = menu
 
         // Create a window for each screen

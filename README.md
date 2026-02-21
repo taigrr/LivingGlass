@@ -1,4 +1,4 @@
-# Life Wallpaper
+# LivingGlass
 
 Conway's Game of Life as a dynamic macOS desktop wallpaper.
 
@@ -16,7 +16,7 @@ Conway's Game of Life as a dynamic macOS desktop wallpaper.
 ```bash
 chmod +x build.sh
 ./build.sh
-open "build/Life Wallpaper.app"
+open "build/LivingGlass.app"
 ```
 
 Requires macOS 14+ and Xcode Command Line Tools (`xcode-select --install`).
@@ -24,10 +24,10 @@ Requires macOS 14+ and Xcode Command Line Tools (`xcode-select --install`).
 ## Install
 
 ```bash
-cp -r "build/Life Wallpaper.app" /Applications/
+cp -r "build/LivingGlass.app" /Applications/
 ```
 
-To auto-start: System Settings → General → Login Items → add Life Wallpaper.
+To auto-start: System Settings → General → Login Items → add LivingGlass.
 
 ## Controls
 

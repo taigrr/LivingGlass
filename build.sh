@@ -1,12 +1,12 @@
 #!/bin/bash
 set -e
 
-APP_NAME="Life Wallpaper"
+APP_NAME="LivingGlass"
 BUNDLE_DIR="build/${APP_NAME}.app"
 CONTENTS_DIR="${BUNDLE_DIR}/Contents"
 MACOS_DIR="${CONTENTS_DIR}/MacOS"
 
-echo "Building Life Wallpaper..."
+echo "Building LivingGlass..."
 
 # Clean
 rm -rf build/
@@ -17,7 +17,7 @@ mkdir -p "${MACOS_DIR}"
 # Compile
 swiftc \
     -O \
-    -o "${MACOS_DIR}/life-wallpaper" \
+    -o "${MACOS_DIR}/LivingGlass" \
     -framework AppKit \
     -framework QuartzCore \
     Sources/GameEngine.swift \
@@ -35,4 +35,4 @@ echo "To install: cp -r \"${BUNDLE_DIR}\" /Applications/"
 echo ""
 echo "To auto-start on login:"
 echo "  1. Open System Settings > General > Login Items"
-echo "  2. Add 'Life Wallpaper' under 'Open at Login'"
+echo "  2. Add 'LivingGlass' under 'Open at Login'"
