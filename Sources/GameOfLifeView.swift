@@ -136,8 +136,8 @@ class GameOfLifeView: NSView {
         let timer = Timer(timeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
             self?.renderFrame()
         }
-        // Add to .common modes so timer fires during menu tracking & modal loops
-        RunLoop.current.add(timer, forMode: .common)
+        // Always add to main run loop in .common mode so it fires during menu tracking too
+        RunLoop.main.add(timer, forMode: .common)
         displayTimer = timer
     }
 
