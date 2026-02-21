@@ -1,6 +1,17 @@
 import Foundation
 import AppKit
 
+extension NSColor {
+    convenience init(hex: UInt32, alpha: CGFloat = 1.0) {
+        self.init(
+            red: CGFloat((hex >> 16) & 0xFF) / 255.0,
+            green: CGFloat((hex >> 8) & 0xFF) / 255.0,
+            blue: CGFloat(hex & 0xFF) / 255.0,
+            alpha: alpha
+        )
+    }
+}
+
 struct Cell {
     var alive: Bool = false
     var age: Int = 0
@@ -16,23 +27,32 @@ class GameEngine {
     var cells: [[Cell]]
     let maxDeathFrames = 18
 
+    // Charmtone palette by Christian Rocha (meowgorithm)
     static let palette: [NSColor] = [
-        NSColor(red: 0.95, green: 0.26, blue: 0.21, alpha: 1),
-        NSColor(red: 0.91, green: 0.12, blue: 0.39, alpha: 1),
-        NSColor(red: 0.61, green: 0.15, blue: 0.69, alpha: 1),
-        NSColor(red: 0.40, green: 0.23, blue: 0.72, alpha: 1),
-        NSColor(red: 0.25, green: 0.32, blue: 0.71, alpha: 1),
-        NSColor(red: 0.13, green: 0.59, blue: 0.95, alpha: 1),
-        NSColor(red: 0.01, green: 0.66, blue: 0.96, alpha: 1),
-        NSColor(red: 0.00, green: 0.74, blue: 0.83, alpha: 1),
-        NSColor(red: 0.00, green: 0.59, blue: 0.53, alpha: 1),
-        NSColor(red: 0.30, green: 0.69, blue: 0.31, alpha: 1),
-        NSColor(red: 0.55, green: 0.76, blue: 0.29, alpha: 1),
-        NSColor(red: 0.80, green: 0.86, blue: 0.22, alpha: 1),
-        NSColor(red: 1.00, green: 0.92, blue: 0.23, alpha: 1),
-        NSColor(red: 1.00, green: 0.76, blue: 0.03, alpha: 1),
-        NSColor(red: 1.00, green: 0.60, blue: 0.00, alpha: 1),
-        NSColor(red: 0.96, green: 0.33, blue: 0.13, alpha: 1),
+        NSColor(hex: 0xFF6E63),  // bengal
+        NSColor(hex: 0xFF937D),  // uni
+        NSColor(hex: 0xFF985A),  // tang
+        NSColor(hex: 0xFFB587),  // yam
+        NSColor(hex: 0xFF577D),  // coral
+        NSColor(hex: 0xFF7F90),  // salmon
+        NSColor(hex: 0xFF388B),  // cherry
+        NSColor(hex: 0xFF6DAA),  // tuna
+        NSColor(hex: 0xFF4FBF),  // pony
+        NSColor(hex: 0xFF79D0),  // cheeky
+        NSColor(hex: 0xFF60FF),  // dolly
+        NSColor(hex: 0xFF84FF),  // blush
+        NSColor(hex: 0xEB5DFF),  // crystal
+        NSColor(hex: 0xC259FF),  // violet
+        NSColor(hex: 0x9953FF),  // plum
+        NSColor(hex: 0x6B50FF),  // charple
+        NSColor(hex: 0x4949FF),  // sapphire
+        NSColor(hex: 0x4776FF),  // thunder
+        NSColor(hex: 0x00A4FF),  // malibu
+        NSColor(hex: 0x0ADCD9),  // turtle
+        NSColor(hex: 0x00FFB2),  // julep
+        NSColor(hex: 0x12C78F),  // guac
+        NSColor(hex: 0xE8FF27),  // citron
+        NSColor(hex: 0xF5EF34),  // mustard
     ]
 
     init(width: Int, height: Int) {

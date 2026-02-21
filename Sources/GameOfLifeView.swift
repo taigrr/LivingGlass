@@ -18,7 +18,7 @@ class GameOfLifeView: NSView {
 
     private func setup() {
         wantsLayer = true
-        layer?.backgroundColor = NSColor.black.cgColor
+        layer?.backgroundColor = NSColor(hex: 0x121117).cgColor
 
         let cols = Int(bounds.width / cellSize)
         let rows = Int(bounds.height / cellSize)
@@ -37,8 +37,8 @@ class GameOfLifeView: NSView {
     override func draw(_ dirtyRect: NSRect) {
         guard let ctx = NSGraphicsContext.current?.cgContext else { return }
 
-        // Black background
-        ctx.setFillColor(NSColor.black.cgColor)
+        // Charmtone caviar background
+        ctx.setFillColor(NSColor(hex: 0x121117).cgColor)
         ctx.fill(bounds)
 
         let palette = GameEngine.palette
@@ -78,8 +78,8 @@ class GameOfLifeView: NSView {
                     let alpha = (1.0 - progress) * 0.85
                     let baseColor = palette[cell.colorIndex]
 
-                    // Shift toward red/dim as cell dies
-                    let dyingColor = baseColor.blended(with: NSColor(red: 0.3, green: 0.1, blue: 0.1, alpha: 1), fraction: progress * 0.6)
+                    // Shift toward charmtone caviar as cell dies
+                    let dyingColor = baseColor.blended(with: NSColor(hex: 0x121117), fraction: progress * 0.6)
                         ?? baseColor
 
                     ctx.setFillColor(dyingColor.withAlphaComponent(alpha).cgColor)
