@@ -216,10 +216,8 @@ class GameOfLifeView: NSView {
         let w = engine.width, h = engine.height
         let palette = MetalRenderer.faceColors
 
-        // Use drawableSize for pixel-accurate positioning
-        let drawableSize = mtkView.drawableSize
-        let scaleX = CGFloat(drawableSize.width) / bounds.width
-        let scaleY = CGFloat(drawableSize.height) / bounds.height
+        // Use view coordinates consistently (shader maps to NDC via viewportSize)
+        renderer?.viewportSize = SIMD2<Float>(Float(bounds.width), Float(bounds.height))
 
         var instances: [CubeInstance] = []
         instances.reserveCapacity(w * h / 3)  // rough estimate of visible cells
@@ -243,8 +241,8 @@ class GameOfLifeView: NSView {
                     let cubeH = Float(maxCubeH * scale)
                     let alpha = Float(min(t * 2.5, 1.0))
 
-                    let px = Float(baseSX * scaleX)
-                    let py = Float(baseSY * scaleY)
+                    let px = Float(baseSX)
+                    let py = Float(baseSY)
 
                     instances.append(CubeInstance(
                         posHeightScale: SIMD4<Float>(px, py, cubeH, Float(scale * tileW)),
@@ -258,8 +256,8 @@ class GameOfLifeView: NSView {
                     let breathe = sin(globalTime * 0.08 + anim.bobPhase * 0.7) * 0.5
                     let cubeH = Float(maxCubeH + breathe)
 
-                    let px = Float(baseSX * scaleX)
-                    let py = Float((baseSY + bob) * scaleY)
+                    let px = Float(baseSX)
+                    let py = Float(baseSY + bob)
 
                     // Brighten with age
                     let ageFactor = min(Float(anim.age) / 180.0, 1.0)
@@ -291,8 +289,8 @@ class GameOfLifeView: NSView {
                         let wobX = CGFloat.random(in: -intensity...intensity)
                         let wobY = CGFloat.random(in: -intensity...intensity)
 
-                        let px = Float((baseSX + wobX) * scaleX)
-                        let py = Float((baseSY + wobY) * scaleY)
+                        let px = Float(baseSX + wobX)
+                        let py = Float(baseSY + wobY)
 
                         // Tint toward red
                         let vf = Float(vibT)
@@ -323,8 +321,8 @@ class GameOfLifeView: NSView {
 
                         let tumbleX = sin(fallT * 0.8) * (1.0 - fallT) * 3.0
 
-                        let px = Float((baseSX + tumbleX) * scaleX)
-                        let py = Float((baseSY - fallDist) * scaleY)
+                        let px = Float(baseSX + tumbleX)
+                        let py = Float(baseSY - fallDist)
 
                         // Fade toward background
                         let ef = Float(eased * 0.5)
