@@ -34,12 +34,9 @@ vertex VertexOut vertex_main(uint vertexId [[vertex_id]],
     float scale = inst.posHeightScale.w;
     float alpha = inst.topColor.a;
 
-    // Compute vertex position: base + height offset
-    float2 pos = v.basePos;
+    // Scale the base tile shape, then add height in pixel space
+    float2 pos = v.basePos * scale;
     pos.y += v.heightFactor * cubeHeight;
-
-    // Apply scale (expand from center)
-    pos *= scale;
 
     // Translate to screen position
     pos += screenPos;
