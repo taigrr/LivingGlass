@@ -122,9 +122,12 @@ class GameOfLifeView: NSView {
     // MARK: - Render Loop
 
     private func startTimer() {
-        displayTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
             self?.renderFrame()
         }
+        // Add to .common modes so timer fires during menu tracking & modal loops
+        RunLoop.current.add(timer, forMode: .common)
+        displayTimer = timer
     }
 
     private func renderFrame() {
