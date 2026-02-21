@@ -65,8 +65,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             screen: screen
         )
 
-        // Place just above the desktop icons layer
-        window.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopIconWindow)) + 1)
+        // Sit at the desktop level (behind desktop icons and all windows)
+        window.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopWindow)))
         window.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle, .fullScreenAuxiliary]
         window.isOpaque = true
         window.hasShadow = false
