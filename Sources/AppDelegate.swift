@@ -8,6 +8,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var isPaused = false
     var manualPause = false
     var pauseMenuItem: NSMenuItem!
+    var originalWallpapers: [NSScreen: URL] = [:]
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Poll power state every 30s
@@ -41,6 +42,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         quitItem.target = self
         menu.addItem(quitItem)
         statusItem.menu = menu
+
+        // Set desktop wallpaper to caviar to prevent flash on space switch
+        setCaviarWallpaper()
 
         // Create a window for each screen
         for screen in NSScreen.screens {
@@ -151,8 +155,31 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    // MARK: - Wallpaper Management
+
+    private func setCaviarWallpaper() {
+        // Save original wallpapers, then set to caviar so space-switch flash matches
+        let workspace = NSWorkspace.shared
+        guard let caviarURL = Bundle.main.url(forResource: "caviar_bg", withExtension: "png") else { return }
+
+        for screen in NSScreen.screens {
+            if let current = workspace.desktopImageURL(for: screen) {
+                originalWallpapers[screen] = current
+            }
+            try? workspace.setDesktopImageURL(caviarURL, for: screen, options: [:])
+        }
+    }
+
+    private func restoreWallpapers() {
+        let workspace = NSWorkspace.shared
+        for (screen, url) in originalWallpapers {
+            try? workspace.setDesktopImageURL(url, for: screen, options: [:])
+        }
+    }
+
     @objc func quit() {
         powerTimer?.invalidate()
+        restoreWallpapers()
         NSApp.terminate(nil)
     }
 }

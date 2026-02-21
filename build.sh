@@ -39,6 +39,9 @@ swiftc \
 cp Info.plist "${CONTENTS_DIR}/Info.plist"
 
 # Generate .icns from iconset if iconutil is available
+# Copy wallpaper fallback image
+cp Resources/caviar_bg.png "${RESOURCES_DIR}/caviar_bg.png"
+
 if command -v iconutil &>/dev/null && [ -d icon.iconset ]; then
     iconutil -c icns icon.iconset -o "${RESOURCES_DIR}/AppIcon.icns"
     echo "App icon bundled."
