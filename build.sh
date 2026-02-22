@@ -29,9 +29,11 @@ swiftc \
     -framework AppKit \
     -framework Metal \
     -framework MetalKit \
+    -framework SwiftUI \
     Sources/GameEngine.swift \
     Sources/MetalRenderer.swift \
     Sources/GameOfLifeView.swift \
+    Sources/Preferences.swift \
     Sources/AppDelegate.swift \
     Sources/main.swift
 
@@ -75,6 +77,7 @@ swiftc \
     -module-name LivingGlass \
     Sources/GameEngine.swift \
     Sources/MetalRenderer.swift \
+    Sources/Preferences.swift \
     Sources/GameOfLifeView.swift \
     ScreenSaver/LivingGlassView.swift
 

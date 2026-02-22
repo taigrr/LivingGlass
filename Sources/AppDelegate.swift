@@ -38,6 +38,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         resetItem.target = self
         menu.addItem(resetItem)
         menu.addItem(NSMenuItem.separator())
+        let prefsItem = NSMenuItem(title: "Preferences…", action: #selector(showPreferences), keyEquivalent: ",")
+        prefsItem.target = self
+        menu.addItem(prefsItem)
+        menu.addItem(NSMenuItem.separator())
         let quitItem = NSMenuItem(title: "Quit LivingGlass", action: #selector(quit), keyEquivalent: "q")
         quitItem.target = self
         menu.addItem(quitItem)
@@ -115,6 +119,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc func spaceChanged() {
+        guard LivingGlassPreferences.bounceOnSpaceSwitch else { return }
         for window in windows {
             if let view = window.contentView as? GameOfLifeView {
                 view.triggerBounce()
@@ -190,6 +195,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let workspace = NSWorkspace.shared
         for (screen, url) in originalWallpapers {
             try? workspace.setDesktopImageURL(url, for: screen, options: [:])
+        }
+    }
+
+    @objc func showPreferences() {
+        PreferencesWindowController.shared.onApply = { [weak self] in
+            self?.applyPreferences()
+        }
+        PreferencesWindowController.shared.showPreferences()
+    }
+
+    private func applyPreferences() {
+        // Rebuild all windows with new settings
+        for w in windows {
+            if let view = w.contentView as? GameOfLifeView {
+                view.applyPreferences()
+            }
         }
     }
 

@@ -28,7 +28,7 @@ class GameOfLifeView: NSView {
     // Render loop
     var displayTimer: Timer?
     var frameCount: Int = 0
-    let gameTickEvery = 120
+    var gameTickEvery = 120
     var globalTime: CGFloat = 0
 
     // Precomputed game state diffs
@@ -105,10 +105,11 @@ class GameOfLifeView: NSView {
         let screenW = bounds.width
         let screenH = bounds.height
 
-        let targetTilesAcross: CGFloat = 20
+        let targetTilesAcross = CGFloat(LivingGlassPreferences.tileCount)
         tileW = max(floor(screenW / targetTilesAcross), 24)
         tileH = floor(tileW / 4)
-        maxCubeH = floor(tileW * 0.55)
+        let cubeHeightPct = CGFloat(LivingGlassPreferences.cubeHeight) / 100.0
+        maxCubeH = floor(tileW * cubeHeightPct)
 
         let diagonal = sqrt(screenW * screenW + screenH * screenH)
         let nForWidth = Int(ceil(diagonal / tileW)) + 4
@@ -428,6 +429,11 @@ class GameOfLifeView: NSView {
     func resume() {
         guard displayTimer == nil else { return }
         startTimer()
+    }
+
+    func applyPreferences() {
+        gameTickEvery = LivingGlassPreferences.gameSpeed
+        initGrid()
     }
 
     func resize(to size: NSSize) {
