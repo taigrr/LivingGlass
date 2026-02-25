@@ -103,11 +103,28 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc func screensChanged() {
-        // Tear down and rebuild for new screen config
-        for w in windows {
-            w.close()
+        // Defer entire rebuild to next run loop to avoid modifying state during AppKit's display reconfiguration
+        DispatchQueue.main.async { [weak self] in
+            self?.rebuildWindows()
         }
-        windows.removeAll()
+    }
+    
+    private func rebuildWindows() {
+        // Stop all animations first
+        for w in windows {
+            if let view = w.contentView as? GameOfLifeView {
+                view.stop()
+            }
+        }
+        
+        // Close old windows
+        let oldWindows = windows
+        windows = []
+        for w in oldWindows {
+            w.orderOut(nil)
+        }
+        
+        // Create new windows for current screens
         for screen in NSScreen.screens {
             createWindow(for: screen)
         }
