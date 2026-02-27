@@ -13,6 +13,9 @@ struct LivingGlassPreferences {
         case colorScheme = "LG_ColorScheme"
         case launchAtLogin = "LG_LaunchAtLogin"
         case bounceOnSpaceSwitch = "LG_BounceOnSpaceSwitch"
+        case audioReactivityEnabled = "LG_AudioReactivityEnabled"
+        case audioSensitivity = "LG_AudioSensitivity"
+        case dayNightEnabled = "LG_DayNightEnabled"
     }
 
     /// Game tick interval in frames (lower = faster). Default: 120 (2 seconds at 60fps)
@@ -62,6 +65,30 @@ struct LivingGlassPreferences {
         }
         set { defaults.set(newValue, forKey: Key.bounceOnSpaceSwitch.rawValue) }
     }
+
+    /// Audio reactivity enabled. Default: false
+    static var audioReactivityEnabled: Bool {
+        get { defaults.bool(forKey: Key.audioReactivityEnabled.rawValue) }
+        set { defaults.set(newValue, forKey: Key.audioReactivityEnabled.rawValue) }
+    }
+
+    /// Audio sensitivity: 0=low, 1=medium, 2=high. Default: 1
+    static var audioSensitivity: Int {
+        get {
+            if defaults.object(forKey: Key.audioSensitivity.rawValue) == nil { return 1 }
+            return defaults.integer(forKey: Key.audioSensitivity.rawValue)
+        }
+        set { defaults.set(newValue, forKey: Key.audioSensitivity.rawValue) }
+    }
+
+    /// Day/night color theme enabled. Default: true
+    static var dayNightEnabled: Bool {
+        get {
+            if defaults.object(forKey: Key.dayNightEnabled.rawValue) == nil { return true }
+            return defaults.bool(forKey: Key.dayNightEnabled.rawValue)
+        }
+        set { defaults.set(newValue, forKey: Key.dayNightEnabled.rawValue) }
+    }
 }
 
 // MARK: - SwiftUI Preferences View
@@ -73,6 +100,9 @@ struct PreferencesView: View {
     @State private var cubeHeight: Double
     @State private var colorScheme: String
     @State private var bounceOnSpaceSwitch: Bool
+    @State private var audioReactivityEnabled: Bool
+    @State private var audioSensitivity: Int
+    @State private var dayNightEnabled: Bool
 
     var onApply: (() -> Void)?
 
@@ -93,6 +123,9 @@ struct PreferencesView: View {
         _cubeHeight = State(initialValue: Double(LivingGlassPreferences.cubeHeight))
         _colorScheme = State(initialValue: LivingGlassPreferences.colorScheme)
         _bounceOnSpaceSwitch = State(initialValue: LivingGlassPreferences.bounceOnSpaceSwitch)
+        _audioReactivityEnabled = State(initialValue: LivingGlassPreferences.audioReactivityEnabled)
+        _audioSensitivity = State(initialValue: LivingGlassPreferences.audioSensitivity)
+        _dayNightEnabled = State(initialValue: LivingGlassPreferences.dayNightEnabled)
     }
 
     private var speedLabel: String {
@@ -158,6 +191,41 @@ struct PreferencesView: View {
                 .padding(.vertical, 4)
             }
 
+            GroupBox("Audio Reactivity") {
+                VStack(alignment: .leading, spacing: 12) {
+                    Toggle("Enable audio reactivity", isOn: $audioReactivityEnabled)
+
+                    if audioReactivityEnabled {
+                        HStack {
+                            Text("Sensitivity")
+                                .frame(width: 80, alignment: .leading)
+                            Picker("", selection: $audioSensitivity) {
+                                Text("Low").tag(0)
+                                Text("Medium").tag(1)
+                                Text("High").tag(2)
+                            }
+                            .pickerStyle(.segmented)
+                        }
+
+                        Text("Cubes will pulse and react to audio playing on your system.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+
+            GroupBox("Time of Day") {
+                VStack(alignment: .leading, spacing: 12) {
+                    Toggle("Enable day/night color theme", isOn: $dayNightEnabled)
+
+                    Text("Palette shifts automatically — warm at dawn/dusk, cool at night.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .padding(.vertical, 4)
+            }
+
             Divider()
 
             HStack {
@@ -168,6 +236,9 @@ struct PreferencesView: View {
                     cubeHeight = 55
                     colorScheme = "charmtone"
                     bounceOnSpaceSwitch = true
+                    audioReactivityEnabled = false
+                    audioSensitivity = 1
+                    dayNightEnabled = true
                     save()
                 }
                 .buttonStyle(.bordered)
@@ -193,6 +264,9 @@ struct PreferencesView: View {
         LivingGlassPreferences.cubeHeight = Int(cubeHeight)
         LivingGlassPreferences.colorScheme = colorScheme
         LivingGlassPreferences.bounceOnSpaceSwitch = bounceOnSpaceSwitch
+        LivingGlassPreferences.audioReactivityEnabled = audioReactivityEnabled
+        LivingGlassPreferences.audioSensitivity = audioSensitivity
+        LivingGlassPreferences.dayNightEnabled = dayNightEnabled
         onApply?()
     }
 }
@@ -217,10 +291,10 @@ class PreferencesWindowController {
                 self?.onApply?()
             })
             let hostingView = NSHostingView(rootView: prefsView)
-            hostingView.frame = NSRect(x: 0, y: 0, width: 400, height: 380)
+            hostingView.frame = NSRect(x: 0, y: 0, width: 400, height: 520)
 
             let w = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 400, height: 380),
+                contentRect: NSRect(x: 0, y: 0, width: 400, height: 520),
                 styleMask: [.titled, .closable],
                 backing: .buffered,
                 defer: false

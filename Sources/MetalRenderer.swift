@@ -41,19 +41,6 @@ class MetalRenderer: NSObject, MTKViewDelegate {
     var tileW: Float = 72
     var tileH: Float = 18
 
-    // Precomputed palette face colors
-    static let faceColors: [FaceRGB] = GameEngine.palette.map { color in
-        let c = color.usingColorSpace(.sRGB) ?? color
-        let r = Float(c.redComponent)
-        let g = Float(c.greenComponent)
-        let b = Float(c.blueComponent)
-        return FaceRGB(
-            top: SIMD3<Float>(min(r * 1.3, 1), min(g * 1.3, 1), min(b * 1.3, 1)),
-            left: SIMD3<Float>(r * 0.7, g * 0.7, b * 0.7),
-            right: SIMD3<Float>(r * 0.45, g * 0.45, b * 0.45)
-        )
-    }
-
     init?(mtkView: MTKView, bundle: Bundle = Bundle.main) {
         guard let device = MTLCreateSystemDefaultDevice() else { return nil }
         self.device = device
