@@ -90,7 +90,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         window.isOpaque = true
         window.hasShadow = false
         window.ignoresMouseEvents = true
-        window.backgroundColor = NSColor(hex: 0x121117)
+        window.backgroundColor = LivingGlassConstants.backgroundNSColor
         window.hidesOnDeactivate = false
         window.canHide = false
         window.animationBehavior = .none

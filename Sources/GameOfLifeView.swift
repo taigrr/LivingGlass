@@ -76,7 +76,7 @@ class GameOfLifeView: NSView {
         mtkView = MTKView(frame: bounds)
         mtkView.autoresizingMask = [.width, .height]
         mtkView.colorPixelFormat = .bgra8Unorm
-        mtkView.clearColor = MTLClearColor(red: 0x12/255.0, green: 0x11/255.0, blue: 0x17/255.0, alpha: 1)
+        mtkView.clearColor = MTLClearColor(red: LivingGlassConstants.backgroundRed, green: LivingGlassConstants.backgroundGreen, blue: LivingGlassConstants.backgroundBlue, alpha: 1)
         mtkView.isPaused = true           // We drive rendering manually
         mtkView.enableSetNeedsDisplay = false
         mtkView.framebufferOnly = true

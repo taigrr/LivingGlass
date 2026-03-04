@@ -21,7 +21,7 @@ class LivingGlassView: ScreenSaverView {
         didSetup = true
 
         wantsLayer = true
-        layer?.backgroundColor = NSColor(hex: 0x121117).cgColor
+        layer?.backgroundColor = LivingGlassConstants.backgroundNSColor.cgColor
 
         let saverBundle = Bundle(for: LivingGlassView.self)
         let gv = GameOfLifeView(frame: bounds, bundle: saverBundle)
@@ -57,7 +57,7 @@ class LivingGlassView: ScreenSaverView {
     override var configureSheet: NSWindow? { nil }
 
     override func draw(_ rect: NSRect) {
-        NSColor(hex: 0x121117).setFill()
+        LivingGlassConstants.backgroundNSColor.setFill()
         rect.fill()
     }
 }

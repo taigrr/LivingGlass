@@ -21,6 +21,15 @@ struct Cell {
     var jitterY: CGFloat = 0
 }
 
+/// Background color used across app, screen saver, and Metal clear color.
+enum LivingGlassConstants {
+    static let backgroundColor: UInt32 = 0x121117
+    static let backgroundNSColor = NSColor(hex: backgroundColor)
+    static let backgroundRed: Double = Double((backgroundColor >> 16) & 0xFF) / 255.0
+    static let backgroundGreen: Double = Double((backgroundColor >> 8) & 0xFF) / 255.0
+    static let backgroundBlue: Double = Double(backgroundColor & 0xFF) / 255.0
+}
+
 struct GameDiff {
     struct Birth {
         let x: Int
