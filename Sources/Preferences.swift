@@ -179,7 +179,7 @@ struct PreferencesView: View {
                 .keyboardShortcut(.return)
             }
 
-            Text("v1.0 — 0BSD License — Tai Groot")
+            Text("v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0") — 0BSD License — Tai Groot")
                 .font(.caption)
                 .foregroundColor(.secondary)
         }
