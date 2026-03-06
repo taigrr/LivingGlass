@@ -25,14 +25,22 @@ rm -f build/Shaders.air
 # Compile Swift
 swiftc \
     -O \
+    -D LIVINGGLASS_APP \
     -o "${MACOS_DIR}/LivingGlass" \
     -framework AppKit \
     -framework Metal \
     -framework MetalKit \
     -framework SwiftUI \
+    -framework ScreenCaptureKit \
+    -framework Accelerate \
+    -framework CoreMedia \
     Sources/GameEngine.swift \
+    Sources/ColorManager.swift \
     Sources/MetalRenderer.swift \
     Sources/GameOfLifeView.swift \
+    Sources/DayNightTheme.swift \
+    Sources/AudioReactor.swift \
+    Sources/AudioVisualizer.swift \
     Sources/Preferences.swift \
     Sources/AppDelegate.swift \
     Sources/main.swift
@@ -52,6 +60,10 @@ elif [ -d icon.iconset ]; then
     cp -r icon.iconset "${RESOURCES_DIR}/"
     echo "Warning: iconutil not found. Icon iconset copied but not converted."
 fi
+
+# Ad-hoc code sign (required for ScreenCaptureKit TCC permission)
+codesign --force --sign - "${BUNDLE_DIR}"
+echo "Code signed: ${BUNDLE_DIR}"
 
 echo "Built: ${BUNDLE_DIR}"
 
@@ -76,8 +88,11 @@ swiftc \
     -emit-library \
     -module-name LivingGlass \
     Sources/GameEngine.swift \
+    Sources/ColorManager.swift \
     Sources/MetalRenderer.swift \
+    Sources/AudioVisualizer.swift \
     Sources/Preferences.swift \
+    Sources/DayNightTheme.swift \
     Sources/GameOfLifeView.swift \
     ScreenSaver/LivingGlassView.swift
 
