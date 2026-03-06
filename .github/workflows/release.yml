@@ -87,19 +87,17 @@ jobs:
           echo "Installer signing: $INSTALLER_IDENTITY"
           
           # Build component packages
-          pkgbuild --root build/LivingGlass.app \
-                   --component-plist /dev/null \
+          pkgbuild --component build/LivingGlass.app \
                    --identifier land.charm.livingglass.app \
                    --version "$VERSION" \
-                   --install-location /Applications/LivingGlass.app \
+                   --install-location /Applications \
                    --sign "$INSTALLER_IDENTITY" \
                    build/LivingGlass-App.pkg
           
-          pkgbuild --root build/LivingGlass.saver \
-                   --component-plist /dev/null \
+          pkgbuild --component build/LivingGlass.saver \
                    --identifier land.charm.livingglass.saver \
                    --version "$VERSION" \
-                   --install-location ~/Library/Screen\ Savers/LivingGlass.saver \
+                   --install-location "$HOME/Library/Screen Savers" \
                    --sign "$INSTALLER_IDENTITY" \
                    build/LivingGlass-Saver.pkg
           
