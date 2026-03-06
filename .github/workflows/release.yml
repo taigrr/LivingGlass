@@ -36,9 +36,21 @@ jobs:
         run: ./build.sh
 
       - name: Sign Applications
+        env:
+          KEYCHAIN_PATH: ${{ runner.temp }}/signing.keychain-db
         run: |
+          # Debug: show available identities
+          echo "Available identities:"
+          security find-identity -v -p codesigning $KEYCHAIN_PATH
+          
           # Find the Developer ID certificate
-          IDENTITY=$(security find-identity -v -p codesigning | grep "Developer ID Application" | head -1 | awk -F'"' '{print $2}')
+          IDENTITY=$(security find-identity -v -p codesigning $KEYCHAIN_PATH | grep "Developer ID Application" | head -1 | awk -F'"' '{print $2}')
+          
+          if [ -z "$IDENTITY" ]; then
+            echo "Error: No Developer ID Application certificate found"
+            exit 1
+          fi
+          
           echo "Signing with: $IDENTITY"
 
           # Sign the app (deep signs all nested code)
@@ -61,8 +73,12 @@ jobs:
           VERSION="${VERSION#v}"  # Strip leading 'v'
           
           # Find signing identity
-          IDENTITY=$(security find-identity -v -p codesigning | grep "Developer ID Application" | head -1 | awk -F'"' '{print $2}')
-          INSTALLER_IDENTITY=$(security find-identity -v | grep "Developer ID Installer" | head -1 | awk -F'"' '{print $2}')
+          KEYCHAIN_PATH=$RUNNER_TEMP/signing.keychain-db
+          IDENTITY=$(security find-identity -v -p codesigning $KEYCHAIN_PATH | grep "Developer ID Application" | head -1 | awk -F'"' '{print $2}')
+          INSTALLER_IDENTITY=$(security find-identity -v $KEYCHAIN_PATH | grep "Developer ID Installer" | head -1 | awk -F'"' '{print $2}')
+          
+          echo "App signing: $IDENTITY"
+          echo "Installer signing: $INSTALLER_IDENTITY"
           
           # Build component packages
           pkgbuild --root build/LivingGlass.app \
