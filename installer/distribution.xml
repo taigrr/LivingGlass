@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <installer-gui-script minSpecVersion="2">
     <title>LivingGlass</title>
-    <organization>land.charm</organization>
+    <organization>com.taigrr</organization>
     <license file="license.rtf"/>
     <options customize="allow" require-scripts="false" hostArchitectures="arm64,x86_64"/>
     <domains enable_anywhere="false" enable_currentUserHome="true" enable_localSystem="true"/>
@@ -12,13 +12,13 @@
     </choices-outline>
     
     <choice id="app" title="LivingGlass App" description="Menu bar wallpaper application that displays animated Game of Life behind your desktop.">
-        <pkg-ref id="land.charm.livingglass.app"/>
+        <pkg-ref id="com.taigrr.LivingGlass.app"/>
     </choice>
     
     <choice id="saver" title="Screen Saver" description="macOS screen saver version of LivingGlass.">
-        <pkg-ref id="land.charm.livingglass.saver"/>
+        <pkg-ref id="com.taigrr.LivingGlass.saver"/>
     </choice>
     
-    <pkg-ref id="land.charm.livingglass.app" version="VERSION" installKBytes="APPSIZE">LivingGlass-App.pkg</pkg-ref>
-    <pkg-ref id="land.charm.livingglass.saver" version="VERSION" installKBytes="SAVERSIZE">LivingGlass-Saver.pkg</pkg-ref>
+    <pkg-ref id="com.taigrr.LivingGlass.app" version="VERSION" installKBytes="APPSIZE">LivingGlass-App.pkg</pkg-ref>
+    <pkg-ref id="com.taigrr.LivingGlass.saver" version="VERSION" installKBytes="SAVERSIZE">LivingGlass-Saver.pkg</pkg-ref>
 </installer-gui-script>

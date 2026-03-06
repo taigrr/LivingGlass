@@ -88,16 +88,16 @@ jobs:
           
           # Build component packages
           pkgbuild --component build/LivingGlass.app \
-                   --identifier land.charm.livingglass.app \
+                   --identifier com.taigrr.LivingGlass.app \
                    --version "$VERSION" \
                    --install-location /Applications \
                    --sign "$INSTALLER_IDENTITY" \
                    build/LivingGlass-App.pkg
           
           pkgbuild --component build/LivingGlass.saver \
-                   --identifier land.charm.livingglass.saver \
+                   --identifier com.taigrr.LivingGlass.saver \
                    --version "$VERSION" \
-                   --install-location "$HOME/Library/Screen Savers" \
+                   --install-location /Library/Screen\ Savers \
                    --sign "$INSTALLER_IDENTITY" \
                    build/LivingGlass-Saver.pkg
           
