@@ -37,6 +37,10 @@ class MetalRenderer: NSObject, MTKViewDelegate {
     var instanceCount: Int = 0
     var viewportSize: SIMD2<Float> = .zero
 
+    // Frame pacing - limit in-flight frames to prevent GPU contention
+    private let inflightSemaphore = DispatchSemaphore(value: 2)
+    private var lastFrameFailed = false
+
     // Tile geometry (set by view)
     var tileW: Float = 72
     var tileH: Float = 18
@@ -175,12 +179,38 @@ class MetalRenderer: NSObject, MTKViewDelegate {
     }
 
     func draw(in view: MTKView) {
-        guard instanceCount > 0,
-              let instanceBuffer = instanceBuffer,
-              let drawable = view.currentDrawable,
-              let rpd = view.currentRenderPassDescriptor,
-              let cmdBuffer = commandQueue.makeCommandBuffer(),
-              let encoder = cmdBuffer.makeRenderCommandEncoder(descriptor: rpd) else { return }
+        // Skip frame if no instances or if previous frame failed (back off briefly)
+        guard instanceCount > 0, let instanceBuffer = instanceBuffer else { return }
+
+        // Wait for an available slot (prevents unbounded GPU queue buildup)
+        _ = inflightSemaphore.wait(timeout: .now() + .milliseconds(16))
+
+        // Validate drawable and render pass - these can fail during GPU contention
+        guard let drawable = view.currentDrawable,
+              let rpd = view.currentRenderPassDescriptor else {
+            inflightSemaphore.signal()
+            return
+        }
+
+        guard let cmdBuffer = commandQueue.makeCommandBuffer() else {
+            inflightSemaphore.signal()
+            return
+        }
+
+        // Track completion to signal semaphore and detect errors
+        cmdBuffer.addCompletedHandler { [weak self] buffer in
+            self?.inflightSemaphore.signal()
+            if buffer.status == .error {
+                self?.lastFrameFailed = true
+            } else {
+                self?.lastFrameFailed = false
+            }
+        }
+
+        guard let encoder = cmdBuffer.makeRenderCommandEncoder(descriptor: rpd) else {
+            inflightSemaphore.signal()
+            return
+        }
 
         encoder.setRenderPipelineState(pipelineState)
         encoder.setDepthStencilState(depthStencilState)

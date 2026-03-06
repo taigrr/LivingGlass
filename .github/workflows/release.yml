@@ -14,8 +14,40 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Import Code Signing Certificate
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          # Create temporary keychain
+          KEYCHAIN_PATH=$RUNNER_TEMP/signing.keychain-db
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+          # Import certificate
+          echo "$MACOS_CERTIFICATE" | base64 --decode > $RUNNER_TEMP/certificate.p12
+          security import $RUNNER_TEMP/certificate.p12 -P "$MACOS_CERTIFICATE_PWD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security list-keychain -d user -s $KEYCHAIN_PATH
+
       - name: Build
         run: ./build.sh
+
+      - name: Sign Applications
+        run: |
+          # Find the Developer ID certificate
+          IDENTITY=$(security find-identity -v -p codesigning | grep "Developer ID Application" | head -1 | awk -F'"' '{print $2}')
+          echo "Signing with: $IDENTITY"
+
+          # Sign the app (deep signs all nested code)
+          codesign --force --deep --options runtime --sign "$IDENTITY" build/LivingGlass.app
+          codesign --force --deep --options runtime --sign "$IDENTITY" build/LivingGlass.saver
+
+          # Verify signatures
+          codesign --verify --verbose build/LivingGlass.app
+          codesign --verify --verbose build/LivingGlass.saver
 
       - name: Create ZIP archives
         run: |
@@ -23,10 +55,100 @@ jobs:
           zip -r LivingGlass-${{ github.ref_name }}.zip LivingGlass.app
           zip -r LivingGlass-ScreenSaver-${{ github.ref_name }}.zip LivingGlass.saver
 
+      - name: Create Installer
+        run: |
+          VERSION="${{ github.ref_name }}"
+          VERSION="${VERSION#v}"  # Strip leading 'v'
+          
+          # Find signing identity
+          IDENTITY=$(security find-identity -v -p codesigning | grep "Developer ID Application" | head -1 | awk -F'"' '{print $2}')
+          INSTALLER_IDENTITY=$(security find-identity -v | grep "Developer ID Installer" | head -1 | awk -F'"' '{print $2}')
+          
+          # Build component packages
+          pkgbuild --root build/LivingGlass.app \
+                   --component-plist /dev/null \
+                   --identifier land.charm.livingglass.app \
+                   --version "$VERSION" \
+                   --install-location /Applications/LivingGlass.app \
+                   --sign "$INSTALLER_IDENTITY" \
+                   build/LivingGlass-App.pkg
+          
+          pkgbuild --root build/LivingGlass.saver \
+                   --component-plist /dev/null \
+                   --identifier land.charm.livingglass.saver \
+                   --version "$VERSION" \
+                   --install-location ~/Library/Screen\ Savers/LivingGlass.saver \
+                   --sign "$INSTALLER_IDENTITY" \
+                   build/LivingGlass-Saver.pkg
+          
+          # Calculate sizes for distribution.xml
+          APPSIZE=$(du -sk build/LivingGlass.app | cut -f1)
+          SAVERSIZE=$(du -sk build/LivingGlass.saver | cut -f1)
+          
+          # Update distribution.xml with version and sizes
+          sed -e "s/VERSION/$VERSION/g" \
+              -e "s/APPSIZE/$APPSIZE/g" \
+              -e "s/SAVERSIZE/$SAVERSIZE/g" \
+              installer/distribution.xml > build/distribution.xml
+          
+          cp installer/license.rtf build/
+          
+          # Build product archive
+          productbuild --distribution build/distribution.xml \
+                       --package-path build \
+                       --resources build \
+                       --sign "$INSTALLER_IDENTITY" \
+                       "build/LivingGlass-${{ github.ref_name }}.pkg"
+
+      - name: Notarize
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          # Notarize the installer package
+          xcrun notarytool submit "build/LivingGlass-${{ github.ref_name }}.pkg" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_ID_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --wait
+          
+          # Staple the notarization ticket to the package
+          xcrun stapler staple "build/LivingGlass-${{ github.ref_name }}.pkg"
+          
+          # Notarize the app ZIP (for direct downloads)
+          xcrun notarytool submit "build/LivingGlass-${{ github.ref_name }}.zip" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_ID_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --wait
+          
+          # Unzip, staple, and re-zip the app
+          cd build
+          unzip -o "LivingGlass-${{ github.ref_name }}.zip"
+          xcrun stapler staple LivingGlass.app
+          rm "LivingGlass-${{ github.ref_name }}.zip"
+          zip -r "LivingGlass-${{ github.ref_name }}.zip" LivingGlass.app
+          
+          # Same for screen saver
+          cd ..
+          xcrun notarytool submit "build/LivingGlass-ScreenSaver-${{ github.ref_name }}.zip" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_ID_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --wait
+          
+          cd build
+          unzip -o "LivingGlass-ScreenSaver-${{ github.ref_name }}.zip"
+          xcrun stapler staple LivingGlass.saver
+          rm "LivingGlass-ScreenSaver-${{ github.ref_name }}.zip"
+          zip -r "LivingGlass-ScreenSaver-${{ github.ref_name }}.zip" LivingGlass.saver
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
             build/LivingGlass-${{ github.ref_name }}.zip
             build/LivingGlass-ScreenSaver-${{ github.ref_name }}.zip
+            build/LivingGlass-${{ github.ref_name }}.pkg
           generate_release_notes: true
