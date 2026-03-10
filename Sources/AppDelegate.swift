@@ -8,6 +8,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var isPaused = false
     var manualPause = false
     var pauseMenuItem: NSMenuItem!
+    var audioMenuItem: NSMenuItem!
+    var dayNightMenuItem: NSMenuItem!
     var originalWallpapers: [NSScreen: URL] = [:]
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -37,6 +39,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let resetItem = NSMenuItem(title: "Reset", action: #selector(resetAll), keyEquivalent: "r")
         resetItem.target = self
         menu.addItem(resetItem)
+        menu.addItem(NSMenuItem.separator())
+        audioMenuItem = NSMenuItem(title: "Audio Reactivity", action: #selector(toggleAudio), keyEquivalent: "a")
+        audioMenuItem.target = self
+        audioMenuItem.state = LivingGlassPreferences.audioReactivityEnabled ? .on : .off
+        menu.addItem(audioMenuItem)
+        dayNightMenuItem = NSMenuItem(title: "Day/Night Theme", action: #selector(toggleDayNight), keyEquivalent: "d")
+        dayNightMenuItem.target = self
+        dayNightMenuItem.state = LivingGlassPreferences.dayNightEnabled ? .on : .off
+        menu.addItem(dayNightMenuItem)
         menu.addItem(NSMenuItem.separator())
         let prefsItem = NSMenuItem(title: "Preferences…", action: #selector(showPreferences), keyEquivalent: ",")
         prefsItem.target = self
@@ -70,6 +81,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             name: NSWorkspace.activeSpaceDidChangeNotification,
             object: nil
         )
+
+        // Start day/night theme
+        DayNightTheme.shared.start()
+
+        // Start audio reactor if enabled (silent — no alert on first launch)
+        if LivingGlassPreferences.audioReactivityEnabled {
+            startAudioSilently()
+        }
     }
 
     private func createWindow(for screen: NSScreen) {
@@ -163,6 +182,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    @objc func toggleAudio() {
+        let enabled = !LivingGlassPreferences.audioReactivityEnabled
+        LivingGlassPreferences.audioReactivityEnabled = enabled
+        audioMenuItem.state = enabled ? .on : .off
+        if enabled {
+            startAudio()
+        } else {
+            AudioReactor.shared.stop()
+        }
+    }
+
+    @objc func toggleDayNight() {
+        let enabled = !LivingGlassPreferences.dayNightEnabled
+        LivingGlassPreferences.dayNightEnabled = enabled
+        dayNightMenuItem.state = enabled ? .on : .off
+        DayNightTheme.shared.update()
+    }
+
     @objc func powerStateChanged() {
         checkPowerState()
     }
@@ -185,6 +222,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 view.pause()
             }
         }
+        AudioReactor.shared.stop()
     }
 
     private func resume() {
@@ -192,6 +230,42 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         for window in windows {
             if let view = window.contentView as? GameOfLifeView {
                 view.resume()
+            }
+        }
+        if LivingGlassPreferences.audioReactivityEnabled {
+            startAudioSilently()
+        }
+    }
+
+    // MARK: - Audio Helpers
+
+    /// Start audio silently (launch/resume) — no alert on failure
+    private func startAudioSilently() {
+        AudioReactor.shared.start()
+    }
+
+    /// Start audio with user feedback — shows alert if it fails after retry
+    private func startAudio() {
+        AudioReactor.shared.start { [weak self] in
+            self?.handleAudioStartFailed()
+        }
+    }
+
+    private func handleAudioStartFailed() {
+        LivingGlassPreferences.audioReactivityEnabled = false
+        audioMenuItem.state = .off
+
+        let alert = NSAlert()
+        alert.messageText = "Could Not Start Audio Capture"
+        alert.informativeText = "If you just granted Screen Recording permission, you may need to quit and relaunch LivingGlass for the change to take effect."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Open System Settings")
+        alert.addButton(withTitle: "OK")
+
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") {
+                NSWorkspace.shared.open(url)
             }
         }
     }
@@ -232,10 +306,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 view.applyPreferences()
             }
         }
+
+        // Update day/night theme
+        DayNightTheme.shared.update()
+
+        // Toggle audio reactor based on preference
+        if LivingGlassPreferences.audioReactivityEnabled {
+            startAudio()
+        } else {
+            AudioReactor.shared.stop()
+        }
     }
 
     @objc func quit() {
         powerTimer?.invalidate()
+        DayNightTheme.shared.stop()
+        AudioReactor.shared.stop()
         restoreWallpapers()
         NSApp.terminate(nil)
     }
